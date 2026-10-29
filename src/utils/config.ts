@@ -36,19 +36,25 @@ export const DEFAULT_CONFIG: ConfigObj = Object.freeze({
   channelConfigs: {},
 });
 
-export async function getSubscription(): Promise<Subscription | null> {
-  const { subscription } = await chrome.storage.local.get(["subscription"]);
+// All features are unlocked in this fork, so every user is treated as a supporter.
+const LOCAL_SUBSCRIPTION: Subscription = Object.freeze({
+  subscriptionId: "local",
+  user: {
+    displayName: "Supporter",
+    email: "",
+    stsTokenManager: { accessToken: "", refreshToken: "" },
+  },
+  nextSyncAt: Number.MAX_SAFE_INTEGER,
+});
 
-  return subscription;
+export async function getSubscription(): Promise<Subscription | null> {
+  return LOCAL_SUBSCRIPTION;
 }
 
 export async function getConfig(): Promise<ConfigObj> {
-  const { config, subscription } = await chrome.storage.local.get([
-    "config",
-    "subscription",
-  ]);
+  const { config } = await chrome.storage.local.get(["config"]);
 
-  if (!config || !subscription?.subscriptionId) {
+  if (!config) {
     return DEFAULT_CONFIG;
   }
 

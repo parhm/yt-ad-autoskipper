@@ -1,5 +1,6 @@
 import { mainLoop } from "./helpers";
 import { logger } from "./logger";
+import { getCurrentAdId } from "./youtubeDOM";
 
 export enum Events {
   tick = "tick",
@@ -27,15 +28,7 @@ const startMainLoop = () => {
 
   mainLoop(async () => {
     const nextLoc = document.location.href;
-    const adPlaying =
-      document
-        .querySelector(".ytp-ad-visit-advertiser-button")
-        ?.getAttribute("aria-label") ??
-      document
-        .querySelector(".ytp-visit-advertiser-link")
-        ?.getAttribute("aria-label") ??
-      document.querySelector(".ytp-ad-badge")?.textContent ??
-      undefined;
+    const adPlaying = getCurrentAdId();
     const eventsToCall: Events[] = [];
     const cbArg = [
       { ad: currentAd, location: currentLoc },

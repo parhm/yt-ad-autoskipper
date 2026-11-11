@@ -5,11 +5,17 @@ import {
 import { addMilliseconds } from "../../utils/datetime";
 import { logger } from "../../utils/logger";
 import { Events, YouTubeEvents } from "../../utils/youtubeEvents";
-import { clickSkipAdBtn, getChannelInfo } from "../../utils/youtubeDOM";
+import {
+  clickSkipAdBtn,
+  fastForwardAd,
+  getChannelInfo,
+  isAdShowing,
+} from "../../utils/youtubeDOM";
 import { EventHandler } from "../../utils/types";
 
 export class VideoAdSkipper implements EventHandler {
   #skipAt: Date | null = null;
+  #clickedAt: Date | null = null;
   #enableSkipSkipping = false;
 
   public setupListeners(): void {
@@ -21,6 +27,7 @@ export class VideoAdSkipper implements EventHandler {
 
   private teardown(): void {
     this.#skipAt = null;
+    this.#clickedAt = null;
   }
 
   private skipSurveyImmediately() {
@@ -107,9 +114,39 @@ export class VideoAdSkipper implements EventHandler {
       return;
     }
 
-    if (this.#skipAt <= new Date()) {
-      clickSkipAdBtn();
+    if (this.#skipAt > new Date()) {
+      return;
+    }
+
+    if (
+      !isAdShowing() &&
+      !document.querySelector(
+        ".ytp-ad-player-overlay, .ytp-ad-player-overlay-layout"
+      )
+    ) {
       this.teardown();
+
+      return;
+    }
+
+    // Keep trying until the skip button actually shows up (it may appear
+    // later than the configured skip time).
+    const clicked = clickSkipAdBtn();
+
+    if (!clicked) {
+      return;
+    }
+
+    if (!this.#clickedAt) {
+      this.#clickedAt = new Date();
+
+      return;
+    }
+
+    // The skip button is still there a while after clicking it: YouTube
+    // ignored the click. Jump the ad to its end instead.
+    if (new Date().getTime() - this.#clickedAt.getTime() > 1000) {
+      fastForwardAd();
     }
   }
 }

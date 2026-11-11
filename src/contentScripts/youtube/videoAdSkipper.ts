@@ -46,7 +46,14 @@ export class VideoAdSkipper implements EventHandler {
       return;
     }
 
-    this.#skipAt = addMilliseconds(new Date(), skipAdTime * 1000);
+    const skipAt = addMilliseconds(new Date(), skipAdTime * 1000);
+
+    // The ad id can change while an ad is still playing (e.g. ad badge text,
+    // or the next ad in a pod). Never push an already scheduled skip later,
+    // otherwise the skip keeps getting postponed.
+    if (!this.#skipAt || skipAt < this.#skipAt) {
+      this.#skipAt = skipAt;
+    }
     logger.debug("scheduling skip at ", this.#skipAt);
     this.renderCountdown();
   }
@@ -129,11 +136,11 @@ export class VideoAdSkipper implements EventHandler {
       return;
     }
 
-    // Keep trying until the skip button actually shows up (it may appear
-    // later than the configured skip time).
-    const clicked = clickSkipAdBtn();
+    // Click the skip button even while it is still hidden (this skips most
+    // ads early), and keep retrying until the ad is gone.
+    const visible = clickSkipAdBtn();
 
-    if (!clicked) {
+    if (!visible) {
       return;
     }
 

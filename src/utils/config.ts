@@ -1,4 +1,8 @@
-import { deepmerge } from "./helpers";
+import {
+  deepmerge,
+  isContextInvalidatedError,
+  isExtensionContextValid,
+} from "./helpers";
 import { logger } from "./logger";
 
 import { Subscription } from "./types";
@@ -52,7 +56,21 @@ export async function getSubscription(): Promise<Subscription | null> {
 }
 
 export async function getConfig(): Promise<ConfigObj> {
-  const { config } = await chrome.storage.local.get(["config"]);
+  if (!isExtensionContextValid()) {
+    return DEFAULT_CONFIG;
+  }
+
+  let config: ConfigObj | undefined;
+
+  try {
+    ({ config } = await chrome.storage.local.get(["config"]));
+  } catch (e) {
+    if (isContextInvalidatedError(e)) {
+      return DEFAULT_CONFIG;
+    }
+
+    throw e;
+  }
 
   if (!config) {
     return DEFAULT_CONFIG;
@@ -62,6 +80,10 @@ export async function getConfig(): Promise<ConfigObj> {
 }
 
 async function setConfig(config: ConfigObj): Promise<void> {
+  if (!isExtensionContextValid()) {
+    return;
+  }
+
   const subscription = await getSubscription();
 
   if (!subscription?.subscriptionId) {

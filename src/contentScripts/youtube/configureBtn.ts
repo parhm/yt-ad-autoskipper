@@ -1,5 +1,6 @@
 import { CONFIGURE_CHANNEL } from "../../constants/actions";
 import { logger } from "../../utils/logger";
+import { isExtensionContextValid } from "../../utils/helpers";
 import { EventHandler } from "../../utils/types";
 import { isVideoPage, getChannelInfo } from "../../utils/youtubeDOM";
 import { YouTubeEvents, Events } from "../../utils/youtubeEvents";
@@ -64,6 +65,11 @@ export class ConfigureChannelBtn implements EventHandler {
     btn.style.marginBottom = "1em";
 
     btn.onclick = () => {
+      if (!isExtensionContextValid()) {
+        // The extension was reloaded; the page must be refreshed to reconnect.
+        return;
+      }
+
       const { channelId, channelName, imageUrl } = getChannelInfo();
       logger.debug("configure channel: ", channelId);
 

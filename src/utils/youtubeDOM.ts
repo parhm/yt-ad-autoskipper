@@ -1,5 +1,5 @@
 import { logger } from "./logger";
-import { clickElem, getElementsByClassNames } from "./dom";
+import { clickElem } from "./dom";
 
 export function isVideoMuted(): boolean {
   const volumeSlider = document.querySelector<HTMLElement>(
@@ -11,15 +11,108 @@ export function isVideoMuted(): boolean {
 
 export const skipButtonClasses = [
   "videoAdUiSkipButton", // Old close ad button
-  "ytp-ad-skip-button ytp-button", // New close ad button
-  "ytp-ad-skip-button-modern ytp-button", // Modern close ad button
-  "ytp-skip-ad-button",
+  "ytp-ad-skip-button", // New close ad button
+  "ytp-ad-skip-button-modern", // Modern close ad button
+  "ytp-skip-ad-button", // Current close ad button (incl. "clean player" layout)
 ];
 
-export function clickSkipAdBtn(): void {
-  const elems = getElementsByClassNames(skipButtonClasses);
+const skipButtonSelector = [
+  ...skipButtonClasses.map((c) => `.${c}`),
+  "button[id^='skip-button']",
+  ".ytp-ad-skip-button-slot button",
+  ".ytp-ad-skip-button-container button",
+].join(", ");
+
+/**
+ * Whether the given element is (one of) YouTube's skip ad buttons. Matches on
+ * individual classes so that extra modifier classes (e.g.
+ * `ytp-skip-ad-button--clean-player`) don't prevent a match.
+ */
+export function isSkipButton(el: Element): boolean {
+  try {
+    return el.matches(skipButtonSelector);
+  } catch (e) {
+    return false;
+  }
+}
+
+function isVisible(el: HTMLElement): boolean {
+  if (!el.isConnected) return false;
+  const style = window.getComputedStyle(el);
+
+  return (
+    style.display !== "none" &&
+    style.visibility !== "hidden" &&
+    el.getClientRects().length > 0
+  );
+}
+
+export function getVisibleSkipButtons(): HTMLElement[] {
+  return Array.from(
+    document.querySelectorAll<HTMLElement>(skipButtonSelector)
+  ).filter(isVisible);
+}
+
+/**
+ * Clicks on the visible skip ad buttons. Returns true if any button was found.
+ */
+export function clickSkipAdBtn(): boolean {
+  const elems = getVisibleSkipButtons();
   logger.debug("clicking on elems: ", elems);
   elems.forEach((el) => el.click());
+
+  return elems.length > 0;
+}
+
+function getPlayer(): HTMLElement | null {
+  return (
+    document.querySelector<HTMLElement>("#movie_player.html5-video-player") ||
+    document.querySelector<HTMLElement>(".html5-video-player")
+  );
+}
+
+export function isAdShowing(): boolean {
+  const player = getPlayer();
+
+  return (
+    !!player &&
+    (player.classList.contains("ad-showing") ||
+      player.classList.contains("ad-interrupting"))
+  );
+}
+
+/**
+ * Fallback for when clicking the skip button has no effect: jump the ad video
+ * to its end. Only used once a skip button is shown, i.e. the ad is skippable.
+ */
+export function fastForwardAd(): void {
+  if (!isAdShowing()) return;
+
+  const video = getPlayer()?.querySelector<HTMLVideoElement>("video");
+
+  if (video && Number.isFinite(video.duration) && video.duration > 0) {
+    logger.debug("fast forwarding ad to its end.");
+    video.currentTime = video.duration;
+  }
+}
+
+/**
+ * Returns an identifier for the ad currently playing, or undefined if no ad
+ * is playing.
+ */
+export function getCurrentAdId(): string | undefined {
+  return (
+    document
+      .querySelector(".ytp-ad-visit-advertiser-button")
+      ?.getAttribute("aria-label") ||
+    document
+      .querySelector(".ytp-visit-advertiser-link")
+      ?.getAttribute("aria-label") ||
+    document.querySelector(".ytp-ad-badge")?.textContent?.trim() ||
+    (isAdShowing()
+      ? `ad:${getPlayer()?.querySelector("video")?.src || "unknown"}`
+      : undefined)
+  );
 }
 
 export function clickMuteBtn(): void {

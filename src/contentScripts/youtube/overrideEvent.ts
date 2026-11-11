@@ -1,5 +1,5 @@
 import { isInIframe } from "../../utils/dom";
-import { skipButtonClasses } from "../../utils/youtubeDOM";
+import { isSkipButton } from "../../utils/youtubeDOM";
 
 type Callable = <T>(args: T) => unknown;
 
@@ -33,7 +33,7 @@ function overrideAddEventListener() {
     listener: Callable,
     options?: boolean | AddEventListenerOptions | undefined
   ) {
-    if (type === "click" && skipButtonClasses.includes(this.className)) {
+    if (type === "click" && isSkipButton(this)) {
       return originalAddEventListener.call(
         this,
         type,

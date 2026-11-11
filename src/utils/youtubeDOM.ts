@@ -2,11 +2,19 @@ import { logger } from "./logger";
 import { clickElem } from "./dom";
 
 export function isVideoMuted(): boolean {
+  const video = document.querySelector<HTMLVideoElement>(
+    "#movie_player video, .html5-video-player video"
+  );
+
+  if (video) {
+    return video.muted || video.volume === 0;
+  }
+
   const volumeSlider = document.querySelector<HTMLElement>(
     ".ytp-volume-slider-handle"
   );
 
-  return parseInt(volumeSlider?.style.left || "0") === 0;
+  return !!volumeSlider && parseInt(volumeSlider.style.left || "0") === 0;
 }
 
 export const skipButtonClasses = [
@@ -54,14 +62,20 @@ export function getVisibleSkipButtons(): HTMLElement[] {
 }
 
 /**
- * Clicks on the visible skip ad buttons. Returns true if any button was found.
+ * Clicks on all skip ad buttons, including hidden ones. YouTube renders the
+ * skip button (hidden) as soon as the ad starts, and clicking it before it is
+ * shown skips most ads right away, without waiting for the countdown.
+ *
+ * Returns true if a *visible* skip button was found.
  */
 export function clickSkipAdBtn(): boolean {
-  const elems = getVisibleSkipButtons();
+  const elems = Array.from(
+    document.querySelectorAll<HTMLElement>(skipButtonSelector)
+  );
   logger.debug("clicking on elems: ", elems);
   elems.forEach((el) => el.click());
 
-  return elems.length > 0;
+  return elems.some(isVisible);
 }
 
 function getPlayer(): HTMLElement | null {

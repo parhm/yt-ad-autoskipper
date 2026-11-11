@@ -74,9 +74,8 @@ const TEMPLATE = `
         <span>Seconds to play ad before skipping</span>
         <p class="pref-desc">
           Ads will play for the supplied number of seconds before they are
-          skiped. The default value is 5 seconds as that is when YouTube
-          makes the "Skip Ad" button visible, but the value can be as low as
-          0, where you won't see any ads.
+          skipped. The default value is 0, which skips most ads right away
+          without waiting for YouTube to show the "Skip Ad" button.
         </p>
       </div>
       <input type="number" name="skipsecs" />

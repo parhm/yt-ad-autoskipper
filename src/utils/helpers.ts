@@ -1,8 +1,38 @@
+/**
+ * Returns false once the extension has been reloaded, updated or disabled
+ * while this content script is still running in an open tab. In that state
+ * every chrome.* API call throws "Extension context invalidated".
+ */
+export function isExtensionContextValid(): boolean {
+  try {
+    return !!chrome.runtime?.id;
+  } catch {
+    return false;
+  }
+}
+
+export function isContextInvalidatedError(e: unknown): boolean {
+  return (
+    e instanceof Error && e.message.includes("Extension context invalidated")
+  );
+}
+
 export function mainLoop(cb: () => Promise<void>, ms: number): void {
   const call = () => {
-    cb().finally(() => {
-      setTimeout(() => call(), ms);
-    });
+    // Stop the orphaned loop if the extension was reloaded/updated.
+    if (!isExtensionContextValid()) {
+      return;
+    }
+
+    cb()
+      .catch((e) => {
+        if (!isContextInvalidatedError(e)) {
+          throw e;
+        }
+      })
+      .finally(() => {
+        setTimeout(() => call(), ms);
+      });
   };
 
   call();
